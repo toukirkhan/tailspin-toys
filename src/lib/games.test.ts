@@ -63,4 +63,82 @@ describe('games data-access helpers', () => {
         await seedGames(db, 2);
         expect(await getGameById(db, 99999)).toBeNull();
     });
+
+    describe('getAllGames filters', () => {
+        let strategyId: number;
+        let puzzleId: number;
+        let firstPublisherId: number;
+
+        beforeEach(async () => {
+            const [strategy] = await db
+                .insert(categories)
+                .values({ name: 'Strategy', description: 'Strategy games' })
+                .returning({ id: categories.id });
+            const [puzzle] = await db
+                .insert(categories)
+                .values({ name: 'Puzzle', description: 'Puzzle games' })
+                .returning({ id: categories.id });
+            const [firstPublisher] = await db
+                .insert(publishers)
+                .values({ name: 'Pub One', description: 'First publisher' })
+                .returning({ id: publishers.id });
+            const [secondPublisher] = await db
+                .insert(publishers)
+                .values({ name: 'Pub Two', description: 'Second publisher' })
+                .returning({ id: publishers.id });
+
+            strategyId = strategy.id;
+            puzzleId = puzzle.id;
+            firstPublisherId = firstPublisher.id;
+
+            await db.insert(games).values([
+                {
+                    title: 'Alpha',
+                    description: 'Strategy from Pub One',
+                    starRating: 4,
+                    categoryId: strategy.id,
+                    publisherId: firstPublisher.id,
+                },
+                {
+                    title: 'Beta',
+                    description: 'Puzzle from Pub One',
+                    starRating: 4,
+                    categoryId: puzzle.id,
+                    publisherId: firstPublisher.id,
+                },
+                {
+                    title: 'Gamma',
+                    description: 'Strategy from Pub Two',
+                    starRating: 4,
+                    categoryId: strategy.id,
+                    publisherId: secondPublisher.id,
+                },
+            ]);
+        });
+
+        it('filters by one category', async () => {
+            const filtered = await getAllGames(db, { categoryIds: [strategyId] });
+            expect(filtered.map((game) => game.title)).toEqual(['Alpha', 'Gamma']);
+        });
+
+        it('filters by publisher', async () => {
+            const filtered = await getAllGames(db, { publisherId: firstPublisherId });
+            expect(filtered.map((game) => game.title)).toEqual(['Alpha', 'Beta']);
+        });
+
+        it('combines category and publisher filters', async () => {
+            const filtered = await getAllGames(db, {
+                categoryIds: [strategyId],
+                publisherId: firstPublisherId,
+            });
+            expect(filtered.map((game) => game.title)).toEqual(['Alpha']);
+        });
+
+        it('requires a game to match every selected category', async () => {
+            const filtered = await getAllGames(db, {
+                categoryIds: [strategyId, puzzleId],
+            });
+            expect(filtered).toEqual([]);
+        });
+    });
 });
