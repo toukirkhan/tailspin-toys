@@ -1,0 +1,124 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Triage board</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 20px;
+    background: var(--background-color-default, #fff);
+    color: var(--text-color-default, #1f2328);
+    font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
+    font-size: var(--text-body-medium, 14px);
+    line-height: var(--leading-body-medium, 20px);
+  }
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+  h1 { margin: 0; font-size: var(--text-title-medium, 20px); font-weight: var(--font-weight-semibold, 600); }
+  .muted { color: var(--text-color-muted, #59636e); }
+  .lane { border: 1px solid var(--border-color-default, #d1d9e0); border-radius: 10px; padding: 12px; margin-bottom: 20px; }
+  .lane.hot { border-color: var(--true-color-orange, #bc4c00); background: var(--true-color-orange-muted, rgba(251,143,68,.08)); }
+  .lane h2 { margin: 0 0 12px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; display: flex; gap: 8px; align-items: center; }
+  .count { font-weight: 500; border-radius: 999px; padding: 0 8px; border: 1px solid var(--border-color-default, #d1d9e0); }
+  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+  .hot .grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+  .card {
+    background: var(--background-color-default, #fff);
+    border: 1px solid var(--border-color-default, #d1d9e0); border-radius: 8px;
+    padding: 12px; display: flex; flex-direction: column; gap: 8px;
+  }
+  .card-head { display: flex; gap: 8px; align-items: flex-start; }
+  .rank { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-weight: 600; font-size: 12px;
+          background: var(--true-color-orange, #bc4c00); color: var(--color-white, #fff); }
+  .title { font-weight: var(--font-weight-semibold, 600); color: inherit; text-decoration: none; }
+  .title:hover { text-decoration: underline; }
+  .num { font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px; }
+  .labels { display: flex; flex-wrap: wrap; gap: 4px; }
+  .label { font-size: 11px; border-radius: 999px; padding: 0 7px; border: 1px solid var(--border-color-default, #d1d9e0); }
+  .section-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 2px; }
+  .why { border-left: 3px solid var(--true-color-orange, #bc4c00); padding-left: 8px; }
+  p { margin: 0; }
+  .actions { margin-top: auto; display: flex; gap: 8px; align-items: center; }
+  button {
+    font: inherit; font-size: 13px; cursor: pointer; border-radius: 6px; padding: 4px 10px;
+    border: 1px solid var(--border-color-default, #d1d9e0);
+    background: var(--true-color-blue, #0969da); color: var(--color-white, #fff);
+  }
+  button:disabled { opacity: .6; cursor: default; }
+  button:focus-visible, a:focus-visible { outline: 2px solid var(--color-focus-outline, #0969da); outline-offset: 2px; }
+  .status { font-size: 12px; }
+  .empty { padding: 24px; text-align: center; }
+</style>
+</head>
+<body>
+  <header>
+    <h1 id="heading">Triage board</h1>
+    <span class="muted" id="updated"></span>
+  </header>
+  <main id="root"><p class="muted empty">Loading…</p></main>
+<script>
+const root = document.getElementById("root");
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+function card(issue, rank) {
+  const labels = (issue.labels ?? []).map((l) => `<span class="label">${esc(l)}</span>`).join("");
+  const hot = rank != null;
+  return `<article class="card" data-testid="card-${issue.number}">
+    <div class="card-head">
+      ${hot ? `<span class="rank" aria-label="Priority ${rank}">${rank}</span>` : ""}
+      <div><a class="title" href="${esc(issue.url)}" target="_blank" rel="noopener">${esc(issue.title)}</a>
+      <div class="muted num">#${issue.number}${issue.state ? " · " + esc(issue.state) : ""}</div></div>
+    </div>
+    ${labels ? `<div class="labels">${labels}</div>` : ""}
+    ${issue.summary ? `<div>${hot ? '<div class="section-label muted">What it is</div>' : ""}<p class="${hot ? "" : "muted"}">${esc(issue.summary)}</p></div>` : ""}
+    ${hot && issue.justification ? `<div class="why"><div class="section-label muted">Why it's at the top</div><p>${esc(issue.justification)}</p></div>` : ""}
+    <div class="actions">
+      <button type="button" data-add="${issue.number}">Add to context</button>
+      <span class="status muted" role="status" id="status-${issue.number}"></span>
+    </div>
+  </article>`;
+}
+
+function render(board) {
+  if (!board) { root.innerHTML = `<p class="muted empty">No board data yet. Ask the agent to triage a repository.</p>`; return; }
+  document.getElementById("heading").textContent = board.title || `Triage · ${board.repo}`;
+  document.getElementById("updated").textContent = board.updatedAt ? `Updated ${new Date(board.updatedAt).toLocaleString()}` : "";
+  const top = board.top ?? [], rest = board.rest ?? [];
+  root.innerHTML = `
+    <section class="lane hot" aria-labelledby="hot-h">
+      <h2 id="hot-h">🔥 Needs attention now <span class="count">${top.length}</span></h2>
+      <div class="grid">${top.map((i, n) => card(i, n + 1)).join("") || '<p class="muted">Nothing urgent.</p>'}</div>
+    </section>
+    <section class="lane" aria-labelledby="rest-h">
+      <h2 id="rest-h">Backlog <span class="count">${rest.length}</span></h2>
+      <div class="grid">${rest.map((i) => card(i)).join("") || '<p class="muted">Backlog is empty.</p>'}</div>
+    </section>`;
+}
+
+async function load() {
+  const res = await fetch("api/board");
+  render(await res.json());
+}
+
+root.addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-add]");
+  if (!btn) return;
+  const n = btn.dataset.add, status = document.getElementById(`status-${n}`);
+  btn.disabled = true; status.textContent = "Adding…";
+  try {
+    const res = await fetch(`api/context/${n}`, { method: "POST" });
+    const body = await res.json();
+    if (!body.ok) throw new Error(body.error);
+    status.textContent = "✓ Added to context";
+  } catch (err) {
+    status.textContent = "Failed: " + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+new EventSource("events").addEventListener("board", load);
+load();
+</script>
+</body>
+</html>

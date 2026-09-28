@@ -7,7 +7,7 @@ import globals from "globals";
 export default [
   // Global ignores
   {
-    ignores: ["dist/", "node_modules/", ".astro/", "db/migrations/"],
+    ignores: ["dist/", "node_modules/", ".astro/", "db/migrations/", ".github/extensions/triage-board/extension.mjs"],
   },
 
   // Base JavaScript/TypeScript recommended rules
