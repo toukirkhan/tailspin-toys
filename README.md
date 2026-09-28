@@ -35,6 +35,10 @@ npm run dev
 
 `predev` migrates and seeds the local database first. Then navigate to the [website](http://localhost:4321) to see the site!
 
+## Filtering games
+
+The home page can filter the catalog by category and publisher. Filters update the prerendered game list in the browser and can be combined. Selecting multiple categories uses AND semantics, so a game must match every selected category; because each game currently has one category, selecting more than one category returns no games.
+
 To preview a production build instead:
 
 ```bash
