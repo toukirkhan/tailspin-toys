@@ -36,17 +36,21 @@ This is a crowdfunding platform for games with a developer theme. The applicatio
 
 - Use TypeScript with explicit types for function parameters and return values, especially in the data layer (`db/`, `src/lib/`)
 - Frontend code (TypeScript, Astro) must pass ESLint checks (`npm run lint`)
+- Follow the [TypeScript formatting conventions](instructions/typescript.instructions.md); ESLint enforces single quotes, semicolons, and multiline trailing commas.
+- Comments should explain intent or non-obvious decisions, not restate code. Keep them current and follow the [comment and documentation standards](instructions/comments.instructions.md).
 
 ### Data Layer Patterns (Drizzle + Node SQLite)
 
 - Define tables in `db/schema.ts`; manage schema changes with drizzle-kit migrations - see `drizzle.instructions.md`
 - Keep data-access helpers in `src/lib/` with an **injectable `db`** argument so they're testable
+- Add TSDoc/JSDoc to every exported function in `db/` and `src/lib/`, covering purpose, parameters, and return values - see [`drizzle.instructions.md`](instructions/drizzle.instructions.md)
 - Keep CSV/seed logic as pure functions in `db/transforms.ts`
 - Seed-derived values must be deterministic (no `Math.random`) so static builds are reproducible
 
 ### Astro Patterns
 
 - **Astro Pages/Components**: routing, layouts, content, and components are all `.astro` - see `astro.instructions.md`
+- Document each reusable component's `Props` interface and properties - see [`astro.instructions.md`](instructions/astro.instructions.md)
 - Query data directly in page frontmatter via the `src/lib/` helpers (build-time, static output)
 - Dynamic routes use `getStaticPaths()` + `export const prerender = true`
 - Provide a branded `404.astro` (unknown routes are real 404s under static output)
