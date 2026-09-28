@@ -11,6 +11,7 @@ Tailspin Toys is a crowdfunding platform for games with a developer theme. The p
 - **Playwright** — end-to-end tests run against the built static site.
 
 The database is migrated and seeded automatically before `dev`/`build` (via the `predev`/`prebuild` npm scripts) and is written to the gitignored `tailspin.db` file.
+Game cards show each game's star rating, or "No rating yet" when no rating is available.
 
 ## Using this template
 
